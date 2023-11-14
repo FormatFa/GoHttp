@@ -8,6 +8,8 @@ import (
 
 	"net/http"
 
+	"gohttp/core"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
@@ -17,6 +19,12 @@ import (
 )
 
 func main() {
+	application := new(core.Application)
+
+	application.Start()
+
+}
+func main2() {
 	myApp := app.New()
 	myWindow := myApp.NewWindow("Container")
 	myWindow.Resize(fyne.NewSize(1024, 768))

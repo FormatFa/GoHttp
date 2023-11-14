@@ -1,0 +1,6 @@
+#@title:你好xxx @description:xxxesfas @auth:basic
+GET https://gitee.com/oauth/token HTTP/1.1
+content-type: application/x-www-form-urlencoded
+
+grant_type=password&username={{email}}&password={password}&client_id={client_id}&lient_secret={client_secret}&scope=projects user_info issues notes
+
