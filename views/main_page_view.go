@@ -2,6 +2,7 @@ package views
 
 import (
 	"fmt"
+
 	"gohttp/model"
 	"gohttp/mvc"
 	"log"
@@ -9,12 +10,15 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
 
 type MainPageView struct {
 	mvc.BaseView
+
 	mainModel      model.MainModel
+	HttpList       *widget.List
 	Canvas         fyne.CanvasObject
 	Controller     *mvc.BaseController
 	Infinite       *widget.ProgressBarInfinite
@@ -30,10 +34,36 @@ type MainPageView struct {
 	// response
 	ResHeaderEntry *widget.Entry
 	ResBodyText    *widget.Label
+	Model          *model.MainModel
 }
 
 func (view *MainPageView) Init() {
 	fmt.Println("main page view init...")
+	toolbar := widget.NewToolbar(
+
+		widget.NewToolbarAction(theme.FolderOpenIcon(), func() {}),
+	)
+	// ---- left--
+	view.HttpList = widget.NewList(
+		func() int {
+			return len(view.Model.Https)
+		},
+		func() fyne.CanvasObject {
+			return widget.NewLabel("template")
+		},
+		func(lii widget.ListItemID, co fyne.CanvasObject) {
+			co.(*widget.Label).SetText(view.Model.Https[lii].Name)
+		},
+	)
+
+	view.HttpList.OnSelected = func(id widget.ListItemID) {
+		fmt.Printf("on select:%d", id)
+		http := view.Model.Https[id]
+		view.UrlEntry.SetText(http.Url)
+		view.MethodCombo.Selected = http.Method
+		view.BodyEntry.SetText(http.Body)
+		view.ReqHeaderEntry.SetText(http.HeaderRaw)
+	}
 
 	view.Infinite = widget.NewProgressBarInfinite()
 	view.Infinite.Hide()
@@ -63,7 +93,7 @@ func (view *MainPageView) Init() {
 
 	center := container.NewVSplit(reqDiv, resDiv)
 
-	view.Canvas = container.NewBorder(top, nil, nil, nil, center)
+	view.Canvas = container.NewBorder(container.NewVBox(toolbar, top), nil, view.HttpList, nil, center)
 	fmt.Println("set canvas done" + strconv.FormatBool(view.Canvas == nil))
 
 	// view.Controller = new(controller.MainController)

@@ -4,6 +4,8 @@ import (
 	"fyne.io/fyne/v2"
 )
 
+type Model interface {
+}
 type BaseController interface {
 	// BindView(view *BaseView)
 }

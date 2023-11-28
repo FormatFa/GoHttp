@@ -2,6 +2,8 @@ package controller
 
 import (
 	"fmt"
+	"gohttp/listener"
+	"gohttp/model"
 	"gohttp/mvc"
 	"gohttp/views"
 	"io/ioutil"
@@ -12,10 +14,13 @@ import (
 
 type MainController struct {
 	mvc.BaseController
+	Model *model.MainModel
+	View  *views.MainPageView
 }
 
 func (controller *MainController) BindView(view *views.MainPageView) {
 	// controller.view = view
+	controller.View = view
 
 	view.SendBtn.OnTapped = func() {
 		fmt.Println("my click.")
@@ -64,4 +69,17 @@ func (controller *MainController) BindView(view *views.MainPageView) {
 		view.Infinite.Hide()
 
 	}
+
+	// 加载测试数据
+	// https := listener.ReadFromFile("/Users/ljh/Documents/personal/gohttp/demo.http")
+	// controller.Model.Https = https
+}
+
+func (controller *MainController) InitData(path string) {
+	https := listener.ReadFromFile("/Users/ljh/Documents/personal/gohttp/demo.http")
+	controller.Model.Https = https
+	controller.View.HttpList.Refresh()
+}
+func (controller *MainController) loadFile(path string) {
+
 }

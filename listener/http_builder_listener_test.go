@@ -1,4 +1,4 @@
-package core
+package listener
 
 import (
 	"fmt"
@@ -31,6 +31,8 @@ func TestParse(t *testing.T) {
 	https := listener.GetHttps()
 	for _, val := range https {
 		fmt.Println(val.Method + " " + val.Url)
+		fmt.Println(val.Headers)
+		fmt.Println(val.Body)
 	}
 
 }

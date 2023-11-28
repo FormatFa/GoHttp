@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"gohttp/controller"
+	"gohttp/listener"
+	"gohttp/model"
 	"gohttp/mvc"
 	"gohttp/views"
 
@@ -49,12 +51,19 @@ func (application Application) Start() {
 }
 func (application Application) OpenMainPageView() mvc.BaseView {
 	view := new(views.MainPageView)
+	mainModel := &model.MainModel{
+		Https: make(listener.Https, 5),
+	}
 	view.Init()
+	view.Model = mainModel
 	controller := new(controller.MainController)
+	controller.Model = mainModel
 	controller.BindView(view)
 
 	canvas := view.GetCanvas()
 	application.window.SetContent(canvas)
+
+	controller.InitData("")
 	return view
 }
 func (application Application) openView(viewId string) {
