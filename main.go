@@ -63,7 +63,7 @@ func main2() {
 		req, _ := http.NewRequest(method, url, strings.NewReader(reqBodyStr))
 
 		for _, line := range strings.Split(headerStr, "\n") {
-			kv := strings.Split(line, ":")
+			kv := strings.SplitN(line, ":", 2)
 			if len(kv) == 2 {
 				log.Println("add header key=" + kv[0] + " value=" + kv[1])
 				req.Header.Add(kv[0], kv[1])

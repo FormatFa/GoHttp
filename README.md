@@ -14,6 +14,8 @@ A http test tool.
 - run locally
 go run .
 
+# TODO 
+[ ] status code display
 
 ## Roadmap
 

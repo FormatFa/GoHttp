@@ -53,6 +53,7 @@ func (application Application) OpenMainPageView() mvc.BaseView {
 	view := new(views.MainPageView)
 	mainModel := &model.MainModel{
 		Https: make(listener.Https, 5),
+		Files: make([]model.HttpFile, 5),
 	}
 	view.Init(application.window)
 	view.Model = mainModel
