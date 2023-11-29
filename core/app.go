@@ -54,7 +54,7 @@ func (application Application) OpenMainPageView() mvc.BaseView {
 	mainModel := &model.MainModel{
 		Https: make(listener.Https, 5),
 	}
-	view.Init()
+	view.Init(application.window)
 	view.Model = mainModel
 	controller := new(controller.MainController)
 	controller.Model = mainModel
@@ -63,7 +63,7 @@ func (application Application) OpenMainPageView() mvc.BaseView {
 	canvas := view.GetCanvas()
 	application.window.SetContent(canvas)
 
-	controller.InitData("")
+	// controller.InitData("")
 	return view
 }
 func (application Application) openView(viewId string) {

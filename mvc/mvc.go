@@ -11,7 +11,7 @@ type BaseController interface {
 }
 type BaseView interface {
 	GetCanvas() fyne.CanvasObject
-	Init()
+	Init(window fyne.Window)
 	GetController() *BaseController
 	SetController(controller BaseController)
 }

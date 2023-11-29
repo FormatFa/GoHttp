@@ -3,7 +3,7 @@ package listener
 import (
 	"fmt"
 	"gohttp/parser"
-
+	"io"
 	"github.com/antlr4-go/antlr/v4"
 )
 
@@ -26,7 +26,24 @@ type HttpBuilderListener struct {
 	curHttp   *Http
 	curHeader *Header
 }
-
+func ReadFromIo(reader io.Reader) Https {
+	input:= antlr.NewIoStream(reader)
+	lexer := parser.NewGoHttpLexer(input)
+	stream := antlr.NewCommonTokenStream(lexer, 0)
+	p := parser.NewGoHttpParser(stream)
+	p.AddErrorListener(antlr.NewDiagnosticErrorListener(true))
+	tree := p.Https()
+	listener := NewHttpBuilderListener()
+	antlr.ParseTreeWalkerDefault.Walk(listener, tree)
+	https := listener.GetHttps()
+	fmt.Println("parse done")
+	for _, val := range https {
+		fmt.Println(val.Method + " " + val.Url)
+		fmt.Println(val.Headers)
+		fmt.Println(val.Body)
+	}
+	return https
+}
 func ReadFromFile(path string) Https {
 	input, _ := antlr.NewFileStream("/Users/ljh/Documents/personal/gohttp/demo.http")
 	lexer := parser.NewGoHttpLexer(input)

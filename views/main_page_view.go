@@ -7,11 +7,13 @@ import (
 	"gohttp/mvc"
 	"log"
 	"strconv"
-
+	"gohttp/listener"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	"fyne.io/fyne/v2/dialog"
+
 )
 
 type MainPageView struct {
@@ -37,11 +39,18 @@ type MainPageView struct {
 	Model          *model.MainModel
 }
 
-func (view *MainPageView) Init() {
+func (view *MainPageView) Init(window fyne.Window) {
 	fmt.Println("main page view init...")
 	toolbar := widget.NewToolbar(
 
-		widget.NewToolbarAction(theme.FolderOpenIcon(), func() {}),
+		widget.NewToolbarAction(theme.FolderOpenIcon(), func() {
+			diag:=dialog.NewFileOpen(func(f fyne.URIReadCloser, e error){
+				fmt.Printf("open:%s",f.URI())
+				https := listener.ReadFromIo(f)
+				view.Model.Https = https
+			},window )
+			diag.Show()
+		}),
 	)
 	// ---- left--
 	view.HttpList = widget.NewList(

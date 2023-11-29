@@ -10,6 +10,8 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"fyne.io/fyne/v2"
+	
 )
 
 type MainController struct {
@@ -75,8 +77,8 @@ func (controller *MainController) BindView(view *views.MainPageView) {
 	// controller.Model.Https = https
 }
 
-func (controller *MainController) InitData(path string) {
-	https := listener.ReadFromFile("/Users/ljh/Documents/personal/gohttp/demo.http")
+func (controller *MainController) LoadHttpFile(f fyne.URIReadCloser) {
+	https := listener.ReadFromIo(f)
 	controller.Model.Https = https
 	controller.View.HttpList.Refresh()
 }
