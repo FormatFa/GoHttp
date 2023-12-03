@@ -5,9 +5,11 @@ import (
 	"path"
 	"strings"
 
+	"gohttp/core"
 	"gohttp/listener"
 	"gohttp/model"
 	"gohttp/mvc"
+	"gohttp/storage"
 	"log"
 	"os"
 	"strconv"
@@ -39,10 +41,38 @@ type MainPageView struct {
 	TypeChoice *widget.RadioGroup
 	// response
 	ResHeaderEntry *widget.Entry
-	ResBodyText    *widget.Label
+	ResBodyText    *widget.Entry
 	Model          *model.MainModel
 }
 
+// 打开扫描指定目录
+func (view *MainPageView) OpenDir(dirpath string) {
+	fmt.Println("1open :" + dirpath)
+	view.Model.Files = make([]model.HttpFile, 0)
+	dirs, _ := os.ReadDir(dirpath)
+	fmt.Printf("radd.%d\n", len(dirs))
+
+	fmt.Printf("files len:%d", len(dirs))
+	for _, file := range dirs {
+		if !file.Type().IsDir() && strings.HasSuffix(file.Name(), ".http") {
+			fmt.Println(file.Name())
+			item := &model.HttpFile{Name: file.Name(), Path: path.Join(dirpath, file.Name())}
+			view.Model.Files = append(view.Model.Files, *item)
+		}
+	}
+	if len(view.Model.Files) == 0 {
+		fmt.Println("没有找到文件")
+	} else {
+		// 保存上次打开目录
+		storage.GetInstance().Cache.Set("last_dir", dirpath, -1)
+		storage.GetInstance().SaveToFile()
+		fmt.Println("已保存目录到缓存")
+
+	}
+	view.FileList.Refresh()
+	core.GetInstance().FyneApp.SendNotification(fyne.NewNotification("tip", "已打开目录:"+dirpath+" 共"+strconv.Itoa(len(view.Model.Files))+"个http文件"))
+
+}
 func (view *MainPageView) Init(window fyne.Window) {
 	fmt.Println("main page view init...")
 	toolbar := widget.NewToolbar(
@@ -57,25 +87,37 @@ func (view *MainPageView) Init(window fyne.Window) {
 		}),
 		widget.NewToolbarAction(theme.FolderOpenIcon(), func() {
 			diag := dialog.NewFolderOpen(func(lu fyne.ListableURI, err error) {
-				fmt.Println("1open :" + lu.Path())
-				view.Model.Files = make([]model.HttpFile, 0)
-				dirs, err := os.ReadDir(lu.Path())
-				fmt.Printf("radd.%d\n", len(dirs))
+				view.OpenDir(lu.Path())
+				// fmt.Println("1open :" + lu.Path())
+				// view.Model.Files = make([]model.HttpFile, 0)
+				// dirs, err := os.ReadDir(lu.Path())
+				// fmt.Printf("radd.%d\n", len(dirs))
 
-				fmt.Printf("files len:%d", len(dirs))
-				for _, file := range dirs {
-					if !file.Type().IsDir() && strings.HasSuffix(file.Name(), ".http") {
-						fmt.Println(file.Name())
-						item := &model.HttpFile{Name: file.Name(), Path: path.Join(lu.Path(), file.Name())}
-						view.Model.Files = append(view.Model.Files, *item)
-					}
-				}
-				if len(view.Model.Files) == 0 {
-					fmt.Println("没有找到文件")
-				}
-				view.FileList.Refresh()
+				// fmt.Printf("files len:%d", len(dirs))
+				// for _, file := range dirs {
+				// 	if !file.Type().IsDir() && strings.HasSuffix(file.Name(), ".http") {
+				// 		fmt.Println(file.Name())
+				// 		item := &model.HttpFile{Name: file.Name(), Path: path.Join(lu.Path(), file.Name())}
+				// 		view.Model.Files = append(view.Model.Files, *item)
+				// 	}
+				// }
+				// if len(view.Model.Files) == 0 {
+				// 	fmt.Println("没有找到文件")
+				// } else {
+				// 	// 保存上次打开目录
+				// 	storage.GetInstance().Cache.Set("last_dir", lu.Path(), -1)
+				// 	storage.GetInstance().SaveToFile()
+				// 	fmt.Println("已保存目录到缓存")
+
+				// }
+				// view.FileList.Refresh()
 			}, window)
 			diag.Show()
+		}),
+		widget.NewToolbarAction(theme.InfoIcon(), func() {
+			fmt.Println("加载变量")
+			core.GetInstance().Window.SetMainMenu()
+
 		}),
 	)
 	// ---- left--
@@ -136,8 +178,11 @@ func (view *MainPageView) Init(window fyne.Window) {
 
 	// response body
 	view.ResHeaderEntry = widget.NewEntry()
-	view.ResBodyText = widget.NewLabel("")
-	resDiv := container.NewHSplit(view.ResHeaderEntry, view.ResBodyText)
+	view.ResBodyText = widget.NewMultiLineEntry()
+	// 自动换行
+	// view.ResBodyText.Wrapping = fyne.TextWrapBreak
+
+	resDiv := container.NewHSplit(view.ResHeaderEntry, container.NewVScroll(view.ResBodyText))
 
 	center := container.NewVSplit(reqDiv, resDiv)
 
@@ -146,6 +191,11 @@ func (view *MainPageView) Init(window fyne.Window) {
 
 	// view.Controller = new(controller.MainController)
 	// controller.BindView(view)
+	temp := ""
+	for i := 0; i <= 100; i++ {
+		temp += "hello"
+	}
+	view.ResBodyText.SetText(temp)
 
 }
 

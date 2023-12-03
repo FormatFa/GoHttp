@@ -10,8 +10,8 @@ import (
 	"log"
 	"net/http"
 	"strings"
+
 	"fyne.io/fyne/v2"
-	
 )
 
 type MainController struct {
@@ -52,6 +52,7 @@ func (controller *MainController) BindView(view *views.MainPageView) {
 			body, _ := ioutil.ReadAll(response.Body)
 			bodyStr := string(body)
 			log.Println("boody:", string(body))
+			// 设置最大显示长度
 			view.ResBodyText.SetText(bodyStr)
 			// res body
 			keyValues := make([]string, 0, len(response.Header))

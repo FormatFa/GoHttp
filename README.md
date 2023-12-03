@@ -23,9 +23,10 @@ go run .
 implement basic feature
 - Standard version
 refactor code
-
-
+- ssl debug
+- support command line parameter ,e.g. start dir
 # Stack
 
 - golang
 - fyne 2
+- https://pkg.go.dev/github.com/patrickmn/go-cache#section-readme

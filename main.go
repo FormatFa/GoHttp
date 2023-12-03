@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	"gohttp/core"
+	"gohttp/viewmanage"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -19,9 +20,10 @@ import (
 )
 
 func main() {
-	application := new(core.Application)
 
-	application.Start()
+	core.GetInstance().Init()
+	viewmanage.OpenMainPageView()
+	core.GetInstance().Start()
 
 }
 func main2() {

@@ -19,6 +19,7 @@ type MainModel struct {
 	// 文件夹的列表
 	Files       []HttpFile
 	CurFilePath string
+	Vars        map[string]string
 }
 
 // func (main MainModel) send() {
