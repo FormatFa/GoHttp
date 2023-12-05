@@ -8,7 +8,6 @@ import (
 	"gohttp/listener"
 	"gohttp/model"
 	"gohttp/mvc"
-	"gohttp/storage"
 	"gohttp/views"
 )
 
@@ -44,10 +43,10 @@ func OpenMainPageView() mvc.BaseView {
 
 	canvas := view.GetCanvas()
 	core.GetInstance().Window.SetContent(canvas)
-
-	if x, found := storage.GetInstance().Cache.Get("last_dir"); found {
-		fmt.Printf("last dir:%s", x)
-		view.OpenDir(x.(string))
+	lastDir := core.GetInstance().FyneApp.Preferences().String("last_dir")
+	if len(lastDir) > 0 {
+		fmt.Printf("last dir:%s", lastDir)
+		view.OpenDir(lastDir)
 	} else {
 		fmt.Printf("last dir not found")
 	}

@@ -20,6 +20,9 @@ type MainModel struct {
 	Files       []HttpFile
 	CurFilePath string
 	Vars        map[string]string
+
+	// 变量文件列表
+	VarFiles []HttpFile
 }
 
 // func (main MainModel) send() {

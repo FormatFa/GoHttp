@@ -54,7 +54,7 @@ func (application *Application) loadCache() {
 }
 func (application *Application) Init() {
 	storage.GetInstance().InitFromFile()
-	application.FyneApp = app.New()
+	application.FyneApp = app.NewWithID("online.indigo6a.gohttp")
 	application.Window = application.FyneApp.NewWindow("Container")
 
 	// menu := fyne.NewMainMenu(fyne.NewMenu("读取变量文件"))

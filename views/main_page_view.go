@@ -1,7 +1,9 @@
 package views
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"path"
 	"strings"
 
@@ -9,7 +11,6 @@ import (
 	"gohttp/listener"
 	"gohttp/model"
 	"gohttp/mvc"
-	"gohttp/storage"
 	"log"
 	"os"
 	"strconv"
@@ -33,6 +34,7 @@ type MainPageView struct {
 	ReqHeaderEntry *widget.Entry
 	BodyEntry      *widget.Entry
 	MethodCombo    *widget.Select
+	VarsCombo      *widget.Select
 
 	// url
 	UrlEntry *widget.Entry
@@ -45,10 +47,28 @@ type MainPageView struct {
 	Model          *model.MainModel
 }
 
+// load variables file to memory
+func (view *MainPageView) loadVarsFile(path string) {
+	fmt.Println("加载环境文件:" + path)
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		fmt.Println("读取文件错误")
+		return
+	}
+	var result map[string]interface{}
+	json.Unmarshal(data, &result)
+	for key, value := range result {
+		fmt.Println("load vars:" + key + ":" + value.(string))
+		view.Model.Vars[key] = value.(string)
+	}
+
+}
+
 // 打开扫描指定目录
 func (view *MainPageView) OpenDir(dirpath string) {
 	fmt.Println("1open :" + dirpath)
 	view.Model.Files = make([]model.HttpFile, 0)
+	view.Model.VarFiles = make([]model.HttpFile, 0)
 	dirs, _ := os.ReadDir(dirpath)
 	fmt.Printf("radd.%d\n", len(dirs))
 
@@ -59,17 +79,28 @@ func (view *MainPageView) OpenDir(dirpath string) {
 			item := &model.HttpFile{Name: file.Name(), Path: path.Join(dirpath, file.Name())}
 			view.Model.Files = append(view.Model.Files, *item)
 		}
+		if !file.Type().IsDir() && strings.HasSuffix(file.Name(), "vars.json") {
+			fmt.Println(file.Name())
+			item := &model.HttpFile{Name: file.Name(), Path: path.Join(dirpath, file.Name())}
+			view.Model.VarFiles = append(view.Model.VarFiles, *item)
+		}
 	}
 	if len(view.Model.Files) == 0 {
 		fmt.Println("没有找到文件")
 	} else {
 		// 保存上次打开目录
-		storage.GetInstance().Cache.Set("last_dir", dirpath, -1)
-		storage.GetInstance().SaveToFile()
+		// storage.GetInstance().Cache.Set("last_dir", dirpath, -1)
+		// storage.GetInstance().SaveToFile()
+		core.GetInstance().FyneApp.Preferences().SetString("last_dir", dirpath)
 		fmt.Println("已保存目录到缓存")
 
 	}
 	view.FileList.Refresh()
+	options := make([]string, len(view.Model.VarFiles))
+	for i, val := range view.Model.VarFiles {
+		options[i] = val.Name
+	}
+	view.VarsCombo.SetOptions(options)
 	core.GetInstance().FyneApp.SendNotification(fyne.NewNotification("tip", "已打开目录:"+dirpath+" 共"+strconv.Itoa(len(view.Model.Files))+"个http文件"))
 
 }
@@ -116,8 +147,10 @@ func (view *MainPageView) Init(window fyne.Window) {
 		}),
 		widget.NewToolbarAction(theme.InfoIcon(), func() {
 			fmt.Println("加载变量")
-			core.GetInstance().Window.SetMainMenu()
-
+			// core.GetInstance().Window.SetMainMenu()
+			s, _ := json.Marshal(view.Model.Vars)
+			dialog := dialog.NewInformation("vars", string(s), core.GetInstance().Window)
+			dialog.Show()
 		}),
 	)
 	// ---- left--
@@ -159,14 +192,32 @@ func (view *MainPageView) Init(window fyne.Window) {
 	view.Infinite.Hide()
 	view.Infinite.Stop()
 
+	varsTip := widget.NewLabel("选择变量文件:")
+	// 环境切换等
+	view.VarsCombo = widget.NewSelect([]string{}, func(s string) {
+		fmt.Println("切换变量:" + s)
+	})
+	loadvarsBtn := widget.NewButton("load", func() {
+		// 查找打开的那个文件
+		for i := 0; i < len(view.Model.VarFiles); i += 1 {
+			if view.Model.VarFiles[i].Name == view.VarsCombo.Selected {
+				view.loadVarsFile(view.Model.VarFiles[i].Path)
+				return
+			}
+		}
+		fmt.Println("没找到变量文件:" + view.VarsCombo.Selected)
+	})
+
+	toolLayout := container.NewHBox(varsTip, view.VarsCombo, loadvarsBtn)
 	view.MethodCombo = widget.NewSelect([]string{"GET", "POST", "DELETE"}, func(value string) {
 		log.Println("Select set to", value)
 	})
+
 	view.MethodCombo.Selected = "GET"
 	view.SendBtn = widget.NewButton("send", nil)
 
 	view.UrlEntry = widget.NewEntry()
-	top := container.NewBorder(view.Infinite, nil, view.MethodCombo, view.SendBtn, view.UrlEntry)
+	urlLayout := container.NewBorder(view.Infinite, nil, view.MethodCombo, view.SendBtn, view.UrlEntry)
 
 	view.ReqHeaderEntry = widget.NewMultiLineEntry()
 	view.BodyEntry = widget.NewMultiLineEntry()
@@ -186,7 +237,7 @@ func (view *MainPageView) Init(window fyne.Window) {
 
 	center := container.NewVSplit(reqDiv, resDiv)
 
-	view.Canvas = container.NewBorder(container.NewVBox(toolbar, top), nil, container.NewVSplit(view.HttpList, view.FileList), nil, center)
+	view.Canvas = container.NewBorder(container.NewVBox(toolbar, toolLayout, urlLayout), nil, container.NewVSplit(view.HttpList, view.FileList), nil, center)
 	fmt.Println("set canvas done" + strconv.FormatBool(view.Canvas == nil))
 
 	// view.Controller = new(controller.MainController)
