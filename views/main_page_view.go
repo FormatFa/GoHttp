@@ -61,6 +61,7 @@ func (view *MainPageView) loadVarsFile(path string) {
 		fmt.Println("load vars:" + key + ":" + value.(string))
 		view.Model.Vars[key] = value.(string)
 	}
+	core.GetInstance().FyneApp.SendNotification(fyne.NewNotification("tip", "共加载:"+strconv.Itoa(len(result))+"个变量"))
 
 }
 

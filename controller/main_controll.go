@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"fyne.io/fyne/v2"
+	"github.com/valyala/fasttemplate"
 )
 
 type MainController struct {
@@ -20,6 +21,9 @@ type MainController struct {
 	View  *views.MainPageView
 }
 
+func replaceVar(s string, vars map[string]interface{}) string {
+	return fasttemplate.New(s, "{{", "}}").ExecuteString(vars)
+}
 func (controller *MainController) BindView(view *views.MainPageView) {
 	// controller.view = view
 	controller.View = view
@@ -35,13 +39,19 @@ func (controller *MainController) BindView(view *views.MainPageView) {
 		view.Infinite.Show()
 		view.Infinite.Start()
 
+		varsParam := make(map[string]interface{}, len(view.Model.Vars))
+		for k, v := range view.Model.Vars {
+			varsParam[k] = v
+		}
+		url = replaceVar(url, varsParam)
+		bodyStr = replaceVar(bodyStr, varsParam)
 		req, _ := http.NewRequest(method, url, strings.NewReader(bodyStr))
 
 		for _, line := range strings.Split(headerStr, "\n") {
 			kv := strings.Split(line, ":")
 			if len(kv) == 2 {
 				log.Println("add header key=" + kv[0] + " value=" + kv[1])
-				req.Header.Add(kv[0], kv[1])
+				req.Header.Add(replaceVar(kv[0], varsParam), replaceVar(kv[1], varsParam))
 			} else {
 				log.Println("discard invalid header ,because len is not 2")
 			}

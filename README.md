@@ -30,3 +30,4 @@ refactor code
 - golang
 - fyne 2
 - https://pkg.go.dev/github.com/patrickmn/go-cache#section-readme
+- https://github.com/valyala/fasttemplate
