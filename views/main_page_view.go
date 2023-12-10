@@ -1,8 +1,10 @@
 package views
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"image"
 	"io/ioutil"
 	"path"
 	"strings"
@@ -15,7 +17,10 @@ import (
 	"os"
 	"strconv"
 
+	"image/color"
+
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/theme"
@@ -42,9 +47,15 @@ type MainPageView struct {
 	SendBtn    *widget.Button
 	TypeChoice *widget.RadioGroup
 	// response
+	ResTypeChoice  *widget.Select
+	ResBodyLayout  *container.Scroll
+	ResBodyCur     *fyne.Widget
+	ResStatusCode  *canvas.Text
 	ResHeaderEntry *widget.Entry
 	ResBodyText    *widget.Entry
-	Model          *model.MainModel
+	ResBodyImage   *canvas.Image
+
+	Model *model.MainModel
 }
 
 // load variables file to memory
@@ -146,6 +157,7 @@ func (view *MainPageView) Init(window fyne.Window) {
 			}, window)
 			diag.Show()
 		}),
+		widget.NewToolbarSeparator(),
 		widget.NewToolbarAction(theme.InfoIcon(), func() {
 			fmt.Println("加载变量")
 			// core.GetInstance().Window.SetMainMenu()
@@ -183,6 +195,17 @@ func (view *MainPageView) Init(window fyne.Window) {
 		view.MethodCombo.Selected = http.Method
 		view.BodyEntry.SetText(http.Body)
 		view.ReqHeaderEntry.SetText(http.HeaderRaw)
+		cacheKey := http.Method + " " + http.Url
+		data, found := core.GetInstance().Cache.Get(cacheKey)
+		if found {
+			fmt.Println("load cache response:")
+			view.Model.ResBodyBytes = data.([]byte)
+			view.ResStatusCode.Text = "当前显示为上次请求缓存"
+			view.ResStatusCode.Color = color.RGBA{R: 255, G: 255, B: 0, A: 255}
+			view.ResStatusCode.Refresh()
+			view.UpdateResponsePreview()
+		}
+
 	}
 	view.FileList.OnSelected = func(id widget.ListItemID) {
 		fmt.Printf("on select:%d", id)
@@ -226,15 +249,35 @@ func (view *MainPageView) Init(window fyne.Window) {
 		log.Println("Radio set to", value)
 	})
 	view.TypeChoice.Horizontal = true
-	reqDiv := container.NewHSplit(view.ReqHeaderEntry, container.NewVBox(view.TypeChoice, view.BodyEntry))
+	reqDiv := container.NewHSplit(view.ReqHeaderEntry, container.NewBorder(view.TypeChoice, nil, nil, nil, view.BodyEntry))
 
+	// response status
+	view.ResStatusCode = canvas.NewText("", color.Black)
 	// response body
 	view.ResHeaderEntry = widget.NewEntry()
+	view.ResTypeChoice = widget.NewSelect([]string{"text", "image"}, func(s string) {
+		fmt.Println("切换类型:" + s)
+	})
+	view.ResTypeChoice.Selected = "text"
+	view.ResTypeChoice.OnChanged = func(s string) {
+		fmt.Println("select:"+s, "body len:"+strconv.Itoa(len(view.Model.ResBodyBytes)))
+		view.UpdateResponsePreview()
+	}
+	viewBtn := widget.NewButton("download", func() {
+		core.GetInstance().Toast("not implemented")
+	})
 	view.ResBodyText = widget.NewMultiLineEntry()
+	view.ResBodyImage = canvas.NewImageFromResource(theme.FileImageIcon())
+	view.ResBodyImage.FillMode = canvas.ImageFillOriginal
+	// view.ResBodyImage.Hide()
 	// 自动换行
 	// view.ResBodyText.Wrapping = fyne.TextWrapBreak
+	// view.ResBodyCur = view.ResBodyImage
 
-	resDiv := container.NewHSplit(view.ResHeaderEntry, container.NewVScroll(view.ResBodyText))
+	view.ResBodyLayout = container.NewVScroll(view.ResBodyText)
+	resDiv := container.NewHSplit(container.NewBorder(view.ResStatusCode, nil, nil, nil, view.ResHeaderEntry),
+		container.NewBorder(container.NewHBox(view.ResTypeChoice, viewBtn), nil, nil, nil, view.ResBodyLayout),
+	)
 
 	center := container.NewVSplit(reqDiv, resDiv)
 
@@ -267,6 +310,36 @@ func (view *MainPageView) setController(controller *mvc.BaseController) {
 func (view *MainPageView) GetController() *mvc.BaseController {
 	// view.Controller = controller
 	return view.Controller
+}
+func (view *MainPageView) UpdateResponsePreview() {
+	s := view.ResTypeChoice.Selected
+	if s == "text" {
+		if len(view.Model.ResBodyBytes) < 1024 {
+			bodyStr := string(view.Model.ResBodyBytes)
+			log.Println("boody:", string(view.Model.ResBodyBytes))
+			// 设置最大显示长度
+			view.ResBodyText.SetText(bodyStr)
+		} else {
+			view.ResBodyText.SetText("gohttp: 文本太长不显示")
+		}
+		view.ResBodyLayout.Content = view.ResBodyText
+	} else if s == "image" {
+		fmt.Print(view.Model.CurPreviewImage)
+		if view.Model.CurPreviewImage == nil {
+			img, _, err := image.Decode(bytes.NewReader(view.Model.ResBodyBytes))
+			if err != nil {
+				core.GetInstance().Toast("image parse err" + err.Error())
+				return
+			}
+			view.ResBodyImage = canvas.NewImageFromImage(img)
+		}
+		view.ResBodyImage.Refresh()
+
+		view.ResBodyLayout.Content = view.ResBodyImage
+	}
+	view.ResBodyLayout.Refresh()
+	view.ResStatusCode.Refresh()
+	fmt.Println(view.ResBodyCur)
 }
 
 // 更新http响应，header,body

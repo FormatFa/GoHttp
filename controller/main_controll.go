@@ -2,14 +2,17 @@ package controller
 
 import (
 	"fmt"
+	"gohttp/core"
 	"gohttp/listener"
 	"gohttp/model"
 	"gohttp/mvc"
 	"gohttp/views"
+	"image/color"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"github.com/valyala/fasttemplate"
@@ -60,10 +63,16 @@ func (controller *MainController) BindView(view *views.MainPageView) {
 		response, err := http.DefaultClient.Do(req)
 		if err == nil {
 			body, _ := ioutil.ReadAll(response.Body)
-			bodyStr := string(body)
-			log.Println("boody:", string(body))
-			// 设置最大显示长度
-			view.ResBodyText.SetText(bodyStr)
+			// 根据content-type 相应类型决定
+			// TODO: 如果大小大于某个值就不保存到内存
+			controller.Model.ResBodyBytes = body
+			id := method + " " + url
+			if len(body) < 3000 {
+				core.GetInstance().Cache.Set(id, body, time.Hour)
+			} else {
+				core.GetInstance().Cache.Delete(id)
+			}
+
 			// res body
 			keyValues := make([]string, 0, len(response.Header))
 			for k := range response.Header {
@@ -73,6 +82,19 @@ func (controller *MainController) BindView(view *views.MainPageView) {
 			log.Println(resHeadStr)
 			// TODO muliti values?
 			view.ResHeaderEntry.SetText(resHeadStr)
+			view.ResStatusCode.Text = response.Status
+			if response.StatusCode >= 200 && response.StatusCode < 300 {
+				view.ResStatusCode.Color = color.RGBA{R: 0, G: 255, B: 0, A: 255}
+
+			} else if response.StatusCode >= 400 {
+				view.ResStatusCode.Color = color.RGBA{R: 255, G: 0, B: 0, A: 255}
+
+			} else {
+				view.ResStatusCode.Color = color.RGBA{R: 0, G: 0, B: 255, A: 255}
+
+			}
+			// 情况之前生成的数据
+			controller.Model.CurPreviewImage = nil
 
 		} else {
 			log.Println("err=", err)
@@ -80,6 +102,7 @@ func (controller *MainController) BindView(view *views.MainPageView) {
 		}
 		view.Infinite.Stop()
 		view.Infinite.Hide()
+		view.UpdateResponsePreview()
 
 	}
 

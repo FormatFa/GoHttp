@@ -16,7 +16,9 @@ go run .
 
 # TODO 
 [ ] status code display
-
+[ ] tls data and certificate (response has data)
+[ ] resposne view mode (json highlight etc.)
+[ ] request but save response to file
 ## Roadmap
 
 - Prototype version

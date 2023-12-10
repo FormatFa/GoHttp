@@ -4,12 +4,15 @@ import (
 	"image/color"
 	"io/ioutil"
 	"log"
+	"os"
 	"strings"
 
 	"net/http"
 
 	"gohttp/core"
 	"gohttp/viewmanage"
+
+	"github.com/flopp/go-findfont"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -19,6 +22,33 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
+func init() {
+	//设置中文环境
+	fontPaths := findfont.List()
+	for _, path := range fontPaths {
+		// fmt.Println(path)
+		//楷体:simkai.ttf
+		//黑体:simhei.ttf
+		if strings.Contains(path, "simhei.ttf") {
+			log.Println("设置字体路径=", path)
+			os.Setenv("FYNE_FONT", path)
+			break
+		}
+		//mac
+		if strings.Contains(path, "Arial Unicode.ttf") {
+			log.Println("设置字体路径=", path)
+			os.Setenv("FYNE_FONT", path)
+			break
+		}
+		//mac
+		if strings.Contains(path, "Apple Braille.ttf") {
+			log.Println("设置字体路径=", path)
+			os.Setenv("FYNE_FONT", path)
+			break
+		}
+
+	}
+}
 func main() {
 
 	core.GetInstance().Init()
@@ -46,7 +76,7 @@ func main2() {
 	bodyText := widget.NewMultiLineEntry()
 
 	// 顶部
-	combo := widget.NewSelect([]string{"GET", "POST", "DELETE"}, func(value string) {
+	combo := widget.NewSelect([]string{"GET", "POST", "DELETE", "HEAD", "PUT"}, func(value string) {
 		log.Println("Select set to", value)
 	})
 	combo.Selected = "GET"

@@ -3,6 +3,7 @@ package model
 import (
 	"gohttp/listener"
 	"gohttp/mvc"
+	"image"
 	"net/http"
 )
 
@@ -21,8 +22,12 @@ type MainModel struct {
 	CurFilePath string
 	Vars        map[string]string
 
+	CurPreviewImage image.Image
+
 	// 变量文件列表
 	VarFiles []HttpFile
+
+	ResBodyBytes []byte
 }
 
 // func (main MainModel) send() {
