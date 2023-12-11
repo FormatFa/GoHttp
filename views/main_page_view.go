@@ -55,7 +55,9 @@ type MainPageView struct {
 	ResBodyText    *widget.Entry
 	ResBodyImage   *canvas.Image
 
-	Model *model.MainModel
+	// 全局状态底部
+	InfoText *widget.Label
+	Model    *model.MainModel
 }
 
 // load variables file to memory
@@ -115,67 +117,94 @@ func (view *MainPageView) OpenDir(dirpath string) {
 	view.VarsCombo.SetOptions(options)
 	core.GetInstance().FyneApp.SendNotification(fyne.NewNotification("tip", "已打开目录:"+dirpath+" 共"+strconv.Itoa(len(view.Model.Files))+"个http文件"))
 
+	view.InfoText.Text = dirpath
+	view.InfoText.Refresh()
 }
 func (view *MainPageView) Init(window fyne.Window) {
+
 	fmt.Println("main page view init...")
-	toolbar := widget.NewToolbar(
 
-		widget.NewToolbarAction(theme.FileIcon(), func() {
-			diag := dialog.NewFileOpen(func(f fyne.URIReadCloser, e error) {
-				fmt.Printf("open:%s", f.URI())
-				https := listener.ReadFromIo(f)
-				view.Model.Https = https
-			}, window)
-			diag.Show()
-		}),
-		widget.NewToolbarAction(theme.FolderOpenIcon(), func() {
+	// main menu
+	window.SetMainMenu(fyne.NewMainMenu(
+		fyne.NewMenu("文件", fyne.NewMenuItem("打开工作区", func() {
 			diag := dialog.NewFolderOpen(func(lu fyne.ListableURI, err error) {
-				view.OpenDir(lu.Path())
-				// fmt.Println("1open :" + lu.Path())
-				// view.Model.Files = make([]model.HttpFile, 0)
-				// dirs, err := os.ReadDir(lu.Path())
-				// fmt.Printf("radd.%d\n", len(dirs))
+				if err == nil {
+					view.OpenDir(lu.Path())
+				} else {
+					core.GetInstance().Toast(err.Error())
+				}
 
-				// fmt.Printf("files len:%d", len(dirs))
-				// for _, file := range dirs {
-				// 	if !file.Type().IsDir() && strings.HasSuffix(file.Name(), ".http") {
-				// 		fmt.Println(file.Name())
-				// 		item := &model.HttpFile{Name: file.Name(), Path: path.Join(lu.Path(), file.Name())}
-				// 		view.Model.Files = append(view.Model.Files, *item)
-				// 	}
-				// }
-				// if len(view.Model.Files) == 0 {
-				// 	fmt.Println("没有找到文件")
-				// } else {
-				// 	// 保存上次打开目录
-				// 	storage.GetInstance().Cache.Set("last_dir", lu.Path(), -1)
-				// 	storage.GetInstance().SaveToFile()
-				// 	fmt.Println("已保存目录到缓存")
-
-				// }
-				// view.FileList.Refresh()
 			}, window)
 			diag.Show()
-		}),
-		widget.NewToolbarSeparator(),
-		widget.NewToolbarAction(theme.InfoIcon(), func() {
-			fmt.Println("加载变量")
-			// core.GetInstance().Window.SetMainMenu()
+		})),
+		fyne.NewMenu("请求", fyne.NewMenuItem("保存修改", func() {
+			view.SaveCurHttp()
+		})),
+		fyne.NewMenu("变量", fyne.NewMenuItem("预览", func() {
 			s, _ := json.Marshal(view.Model.Vars)
 			dialog := dialog.NewInformation("vars", string(s), core.GetInstance().Window)
 			dialog.Show()
-		}),
+		}), fyne.NewMenuItem("new json", func() {
+			// TODO 改成判断目录是否存在
+			if view.Model.CurFilePath == "" {
+				core.GetInstance().Toast("还没有打开工作区，请先打开一个目录作为工作区")
+				diag := dialog.NewFolderOpen(func(lu fyne.ListableURI, err error) {
+					if err == nil {
+						view.OpenDir(lu.Path())
+					} else {
+						core.GetInstance().Toast(err.Error())
+					}
+
+				}, window)
+				diag.Show()
+				return
+			}
+			dialog.NewEntryDialog("tip", "将会保存到:"+view.Model.CurFilePath, func(name string) {
+
+			}, window).Show()
+
+		})),
+	))
+
+	toolbar := widget.NewToolbar(
+
+		// widget.NewToolbarAction(theme.DocumentSaveIcon(), func() {
+		// 	view.SaveCurHttp()
+		// }),
+		// widget.NewToolbarAction(theme.FolderOpenIcon(), func() {
+		// 	diag := dialog.NewFolderOpen(func(lu fyne.ListableURI, err error) {
+		// 		view.OpenDir(lu.Path())
+		// 	}, window)
+		// 	diag.Show()
+		// }),
+		widget.NewToolbarSeparator(),
+		// widget.NewToolbarAction(theme.InfoIcon(), func() {
+		// 	fmt.Println("加载变量")
+		// 	// core.GetInstance().Window.SetMainMenu()
+
+		// }),
 	)
 	// ---- left--
 	view.HttpList = widget.NewList(
 		func() int {
-			return len(view.Model.Https)
+			return len(view.Model.Https) + 1
 		},
 		func() fyne.CanvasObject {
 			return widget.NewLabel("template")
 		},
 		func(lii widget.ListItemID, co fyne.CanvasObject) {
-			co.(*widget.Label).SetText(view.Model.Https[lii].Name)
+			if lii == 0 {
+				co.(*widget.Label).SetText("+")
+			} else {
+				if view.Model.Https[lii-1].IsChange {
+					co.(*widget.Label).SetText("*" + view.Model.Https[lii-1].Name)
+
+				} else {
+					co.(*widget.Label).SetText(view.Model.Https[lii-1].Name)
+
+				}
+
+			}
 		},
 	)
 
@@ -189,9 +218,34 @@ func (view *MainPageView) Init(window fyne.Window) {
 	)
 
 	view.HttpList.OnSelected = func(id widget.ListItemID) {
-		fmt.Printf("on select:%d", id)
-		http := view.Model.Https[id]
+		if view.Model.CurHttpRef.IsChange {
+			dialog.NewConfirm("GoHttp", "请求已修改，是否保存?", func(b bool) {
+				if b {
+					view.SaveCurHttp()
+				} else {
+					view.Model.CurHttpRef.IsChange = false
+				}
+
+			}, window).Show()
+			return
+		}
+		if id == 0 {
+			dialog.NewEntryDialog("tip", "名字", func(s string) {
+				fmt.Println("name:" + s)
+				view.Model.Https = append(view.Model.Https, listener.Http{
+					Name:   s,
+					Method: "GET",
+				})
+				view.HttpList.Refresh()
+			}, core.GetInstance().Window).Show()
+			return
+		}
+
+		view.Model.CurHttpRef = &view.Model.Https[id-1]
+		fmt.Printf("on select:%d", id-1)
+		http := view.Model.Https[id-1]
 		view.UrlEntry.SetText(http.Url)
+
 		view.MethodCombo.Selected = http.Method
 		view.BodyEntry.SetText(http.Body)
 		view.ReqHeaderEntry.SetText(http.HeaderRaw)
@@ -205,6 +259,7 @@ func (view *MainPageView) Init(window fyne.Window) {
 			view.ResStatusCode.Refresh()
 			view.UpdateResponsePreview()
 		}
+		view.Model.CurHttpRef.IsChange = false
 
 	}
 	view.FileList.OnSelected = func(id widget.ListItemID) {
@@ -221,11 +276,15 @@ func (view *MainPageView) Init(window fyne.Window) {
 	view.VarsCombo = widget.NewSelect([]string{}, func(s string) {
 		fmt.Println("切换变量:" + s)
 	})
-	loadvarsBtn := widget.NewButton("load", func() {
+	loadvarsBtn := widget.NewButton("读取", func() {
 		// 查找打开的那个文件
 		for i := 0; i < len(view.Model.VarFiles); i += 1 {
 			if view.Model.VarFiles[i].Name == view.VarsCombo.Selected {
 				view.loadVarsFile(view.Model.VarFiles[i].Path)
+				// TODO 抽取出来
+				s, _ := json.Marshal(view.Model.Vars)
+				dialog := dialog.NewInformation("vars", string(s), core.GetInstance().Window)
+				dialog.Show()
 				return
 			}
 		}
@@ -238,10 +297,12 @@ func (view *MainPageView) Init(window fyne.Window) {
 	})
 
 	view.MethodCombo.Selected = "GET"
-	view.SendBtn = widget.NewButton("send", nil)
+	view.SendBtn = widget.NewButton("发送", nil)
+
+	// saveBtn := widget.NewButton("保存", func() { view.SaveCurHttp() })
 
 	view.UrlEntry = widget.NewEntry()
-	urlLayout := container.NewBorder(view.Infinite, nil, view.MethodCombo, view.SendBtn, view.UrlEntry)
+	urlLayout := container.NewBorder(view.Infinite, nil, view.MethodCombo, container.NewHBox(view.SendBtn), view.UrlEntry)
 
 	view.ReqHeaderEntry = widget.NewMultiLineEntry()
 	view.BodyEntry = widget.NewMultiLineEntry()
@@ -249,7 +310,7 @@ func (view *MainPageView) Init(window fyne.Window) {
 		log.Println("Radio set to", value)
 	})
 	view.TypeChoice.Horizontal = true
-	reqDiv := container.NewHSplit(view.ReqHeaderEntry, container.NewBorder(view.TypeChoice, nil, nil, nil, view.BodyEntry))
+	reqDiv := container.NewHSplit(view.ReqHeaderEntry, container.NewBorder(nil, nil, nil, nil, view.BodyEntry))
 
 	// response status
 	view.ResStatusCode = canvas.NewText("", color.Black)
@@ -263,8 +324,8 @@ func (view *MainPageView) Init(window fyne.Window) {
 		fmt.Println("select:"+s, "body len:"+strconv.Itoa(len(view.Model.ResBodyBytes)))
 		view.UpdateResponsePreview()
 	}
-	viewBtn := widget.NewButton("download", func() {
-		core.GetInstance().Toast("not implemented")
+	viewBtn := widget.NewButton("下载", func() {
+		core.GetInstance().Toast("尚未实现")
 	})
 	view.ResBodyText = widget.NewMultiLineEntry()
 	view.ResBodyImage = canvas.NewImageFromResource(theme.FileImageIcon())
@@ -281,20 +342,50 @@ func (view *MainPageView) Init(window fyne.Window) {
 
 	center := container.NewVSplit(reqDiv, resDiv)
 
-	view.Canvas = container.NewBorder(container.NewVBox(toolbar, toolLayout, urlLayout), nil, container.NewVSplit(view.HttpList, view.FileList), nil, center)
+	view.InfoText = widget.NewLabel("not open workspace")
+	view.Canvas = container.NewBorder(container.NewVBox(toolbar, toolLayout, urlLayout), view.InfoText, container.NewVSplit(view.HttpList, view.FileList), nil, center)
 	fmt.Println("set canvas done" + strconv.FormatBool(view.Canvas == nil))
 
+	view.UrlEntry.OnChanged = func(s string) {
+		view.Model.CurHttpRef.IsChange = true
+		view.HttpList.Refresh()
+	}
+
+	view.MethodCombo.OnChanged = func(s string) {
+		view.Model.CurHttpRef.IsChange = true
+		view.HttpList.Refresh()
+
+	}
+
+	view.ReqHeaderEntry.OnChanged = func(s string) {
+		view.Model.CurHttpRef.IsChange = true
+		view.HttpList.Refresh()
+
+	}
+
+	view.BodyEntry.OnChanged = func(s string) {
+		view.Model.CurHttpRef.IsChange = true
+		view.HttpList.Refresh()
+
+	}
 	// view.Controller = new(controller.MainController)
 	// controller.BindView(view)
-	temp := ""
-	for i := 0; i <= 100; i++ {
-		temp += "hello"
-	}
-	view.ResBodyText.SetText(temp)
+	// temp := ""
+	// for i := 0; i <= 100; i++ {
+	// 	temp += "hello"
+	// }
+	// view.ResBodyText.SetText(temp)
 
 }
 
 func (view *MainPageView) loadFileData(path string) {
+
+	_, error := os.Stat(path)
+	if os.IsNotExist(error) {
+		core.GetInstance().Toast(path + " 不存在")
+		return
+	}
+
 	https := listener.ReadFromFile(path)
 	fmt.Printf("load result,len=%d\n", len(https))
 	view.Model.Https = https
@@ -310,6 +401,16 @@ func (view *MainPageView) setController(controller *mvc.BaseController) {
 func (view *MainPageView) GetController() *mvc.BaseController {
 	// view.Controller = controller
 	return view.Controller
+}
+
+func (view *MainPageView) SaveCurHttp() {
+	view.Model.CurHttpRef.Method = view.MethodCombo.Selected
+	view.Model.CurHttpRef.Url = view.UrlEntry.Text
+	view.Model.CurHttpRef.Body = view.BodyEntry.Text
+	view.Model.CurHttpRef.IsChange = false
+	view.HttpList.Refresh()
+	// TODO header save
+	core.GetInstance().Toast("save success")
 }
 func (view *MainPageView) UpdateResponsePreview() {
 	s := view.ResTypeChoice.Selected
@@ -340,6 +441,11 @@ func (view *MainPageView) UpdateResponsePreview() {
 	view.ResBodyLayout.Refresh()
 	view.ResStatusCode.Refresh()
 	fmt.Println(view.ResBodyCur)
+}
+
+// 打开选择工作区
+func (view *MainPageView) selectWorkspace() {
+
 }
 
 // 更新http响应，header,body

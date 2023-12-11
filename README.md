@@ -19,6 +19,9 @@ go run .
 [ ] tls data and certificate (response has data)
 [ ] resposne view mode (json highlight etc.)
 [ ] request but save response to file
+[ ] after modify , before close , prompt if save the http file
+[ ] about page
+[ ] 添加保存快捷键
 ## Roadmap
 
 - Prototype version

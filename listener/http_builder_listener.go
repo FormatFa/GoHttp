@@ -19,6 +19,7 @@ type Http struct {
 	Body      string
 	Headers   []Header
 	HeaderRaw string
+	IsChange  bool
 }
 type Https []Http
 type HttpBuilderListener struct {

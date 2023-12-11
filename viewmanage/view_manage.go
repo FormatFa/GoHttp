@@ -31,11 +31,15 @@ func openView(viewId string) {
 func OpenMainPageView() mvc.BaseView {
 	view := new(views.MainPageView)
 	mainModel := &model.MainModel{
-		Https: make(listener.Https, 5),
-		Files: make([]model.HttpFile, 5),
+		Https: make(listener.Https, 1),
+		Files: make([]model.HttpFile, 0),
 		Vars:  make(map[string]string),
 	}
 	view.Init(core.GetInstance().Window)
+	// 初始化数据
+	mainModel.Https[0].Name = "未命名"
+	mainModel.Https[0].Method = "GET"
+	mainModel.CurHttpRef = &mainModel.Https[0]
 	view.Model = mainModel
 	controller := new(controller.MainController)
 	controller.Model = mainModel

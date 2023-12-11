@@ -19,6 +19,7 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -48,6 +49,26 @@ func init() {
 		}
 
 	}
+}
+func main4() {
+	a := app.New()
+	w := a.NewWindow("SysTray")
+
+	if desk, ok := a.(desktop.App); ok {
+		m := fyne.NewMenu("MyApp",
+			fyne.NewMenuItem("Show", func() {
+				w.Show()
+			}))
+		desk.SetSystemTrayMenu(m)
+	}
+
+	w.SetContent(widget.NewLabel("Fyne System Tray"))
+	w.SetCloseIntercept(func() {
+		w.Hide()
+	})
+
+	// w.SetMainMenu(fyne.NewMainMenu(fyne.NewMenu("hello", fyne.NewMenuItem("start", func() {}))))
+	w.ShowAndRun()
 }
 func main() {
 

@@ -14,11 +14,14 @@ type HttpFile struct {
 type MainModel struct {
 	mvc.Model
 	// response
-	response *http.Response
-	header   http.Header
-	Https    listener.Https
+	response   *http.Response
+	header     http.Header
+	Https      listener.Https
+	CurHttpRef *listener.Http
 	// 文件夹的列表
-	Files       []HttpFile
+	Files []HttpFile
+	// TODO 当前文件是否改变
+	// 当前工作区
 	CurFilePath string
 	Vars        map[string]string
 
