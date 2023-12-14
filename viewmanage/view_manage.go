@@ -31,9 +31,10 @@ func openView(viewId string) {
 func OpenMainPageView() mvc.BaseView {
 	view := new(views.MainPageView)
 	mainModel := &model.MainModel{
-		Https: make(listener.Https, 1),
-		Files: make([]model.HttpFile, 0),
-		Vars:  make(map[string]string),
+		Https:   make(listener.Https, 1),
+		Files:   make([]model.HttpFile, 0),
+		Vars:    make(map[string]string),
+		Timeout: 300,
 	}
 	view.Init(core.GetInstance().Window)
 	// 初始化数据

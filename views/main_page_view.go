@@ -93,7 +93,7 @@ func (view *MainPageView) OpenDir(dirpath string) {
 			item := &model.HttpFile{Name: file.Name(), Path: path.Join(dirpath, file.Name())}
 			view.Model.Files = append(view.Model.Files, *item)
 		}
-		if !file.Type().IsDir() && strings.HasSuffix(file.Name(), "vars.json") {
+		if !file.Type().IsDir() && strings.HasSuffix(file.Name(), "_env.json") {
 			fmt.Println(file.Name())
 			item := &model.HttpFile{Name: file.Name(), Path: path.Join(dirpath, file.Name())}
 			view.Model.VarFiles = append(view.Model.VarFiles, *item)
@@ -119,6 +119,7 @@ func (view *MainPageView) OpenDir(dirpath string) {
 
 	view.InfoText.Text = dirpath
 	view.InfoText.Refresh()
+	view.Model.CurWorkPath = dirpath
 }
 func (view *MainPageView) Init(window fyne.Window) {
 
@@ -130,6 +131,37 @@ func (view *MainPageView) Init(window fyne.Window) {
 			diag := dialog.NewFolderOpen(func(lu fyne.ListableURI, err error) {
 				if err == nil {
 					view.OpenDir(lu.Path())
+					if len(view.Model.Files) == 0 {
+						dialog.NewConfirm("tip", "当前目录没有http请求文件，是否创建一个示例模版文件?", func(b bool) {
+							if b {
+								data := `
+# get my ip
+GET https://httpbin.org/ip
+
+# random image
+GET https://picsum.photos/200
+
+# headers
+GET https://httpbin.org/headers
+Content-type: application/json
+
+# json body
+POST https://jsonplaceholder.typicode.com/posts
+Content-type: application/json; charset=UTF-8
+
+{
+	"title":"foo",
+	"body":"bar",
+	"userId":1
+}`
+
+								os.WriteFile(path.Join(lu.Path(), "demo.http"), []byte(data), 0644)
+								core.GetInstance().Toast("已创建demo.http文件,正在刷新")
+								view.OpenDir(lu.Path())
+							}
+						}, window).Show()
+					}
+
 				} else {
 					core.GetInstance().Toast(err.Error())
 				}
@@ -140,13 +172,22 @@ func (view *MainPageView) Init(window fyne.Window) {
 		fyne.NewMenu("请求", fyne.NewMenuItem("保存修改", func() {
 			view.SaveCurHttp()
 		})),
-		fyne.NewMenu("变量", fyne.NewMenuItem("预览", func() {
+		fyne.NewMenu("变量", fyne.NewMenuItem("预览当前环境的变量", func() {
 			s, _ := json.Marshal(view.Model.Vars)
 			dialog := dialog.NewInformation("vars", string(s), core.GetInstance().Window)
 			dialog.Show()
-		}), fyne.NewMenuItem("new json", func() {
+		}), fyne.NewMenuItem("添加临时变量", func() {
+			keyEntry := widget.NewEntry()
+			valueEntry := widget.NewEntry()
+			dialog.NewForm("add", "添加", "取消", []*widget.FormItem{widget.NewFormItem("键", keyEntry), widget.NewFormItem("值", valueEntry)}, func(b bool) {
+				if b {
+					view.Model.Vars[keyEntry.Text] = valueEntry.Text
+					core.GetInstance().Toast("添加成功")
+				}
+			}, window).Show()
+		}), fyne.NewMenuItem("创建新变量环境文件", func() {
 			// TODO 改成判断目录是否存在
-			if view.Model.CurFilePath == "" {
+			if view.Model.CurWorkPath == "" {
 				core.GetInstance().Toast("还没有打开工作区，请先打开一个目录作为工作区")
 				diag := dialog.NewFolderOpen(func(lu fyne.ListableURI, err error) {
 					if err == nil {
@@ -159,8 +200,16 @@ func (view *MainPageView) Init(window fyne.Window) {
 				diag.Show()
 				return
 			}
-			dialog.NewEntryDialog("tip", "将会保存到:"+view.Model.CurFilePath, func(name string) {
+			dialog.NewEntryDialog("tip", "名字", func(name string) {
+				data := `
+{
+	"key1":"val1",
+	"key2":"val2"
+}`
 
+				os.WriteFile(path.Join(view.Model.CurWorkPath, name+"_env.json"), []byte(data), 0644)
+				core.GetInstance().Toast("已创建,正在刷新工作区")
+				view.OpenDir(view.Model.CurWorkPath)
 			}, window).Show()
 
 		})),
@@ -168,9 +217,20 @@ func (view *MainPageView) Init(window fyne.Window) {
 
 	toolbar := widget.NewToolbar(
 
-		// widget.NewToolbarAction(theme.DocumentSaveIcon(), func() {
-		// 	view.SaveCurHttp()
-		// }),
+		widget.NewToolbarAction(theme.SettingsIcon(), func() {
+			timeoutEntry := widget.NewEntry()
+			timeoutEntry.Text = strconv.Itoa(view.Model.Timeout)
+			dialog.NewForm("setting", "apply", "cancel", []*widget.FormItem{widget.NewFormItem("timeout", timeoutEntry)}, func(b bool) {
+				fmt.Println("设置超时时间:", timeoutEntry.Text)
+				i, err := strconv.Atoi(timeoutEntry.Text)
+				if err != nil {
+					core.GetInstance().Toast("格式错误")
+					return
+				} else {
+					view.Model.Timeout = i
+				}
+			}, window).Show()
+		}),
 		// widget.NewToolbarAction(theme.FolderOpenIcon(), func() {
 		// 	diag := dialog.NewFolderOpen(func(lu fyne.ListableURI, err error) {
 		// 		view.OpenDir(lu.Path())
@@ -260,6 +320,7 @@ func (view *MainPageView) Init(window fyne.Window) {
 			view.UpdateResponsePreview()
 		}
 		view.Model.CurHttpRef.IsChange = false
+		view.HttpList.Refresh()
 
 	}
 	view.FileList.OnSelected = func(id widget.ListItemID) {
@@ -305,7 +366,9 @@ func (view *MainPageView) Init(window fyne.Window) {
 	urlLayout := container.NewBorder(view.Infinite, nil, view.MethodCombo, container.NewHBox(view.SendBtn), view.UrlEntry)
 
 	view.ReqHeaderEntry = widget.NewMultiLineEntry()
+	view.ReqHeaderEntry.PlaceHolder = "请求头\n每行一个,如:\nContent-type:application/json\n"
 	view.BodyEntry = widget.NewMultiLineEntry()
+	view.BodyEntry.SetPlaceHolder("请求体，文本")
 	view.TypeChoice = widget.NewRadioGroup([]string{"text", "form", "x-www-form-urlencoded"}, func(value string) {
 		log.Println("Radio set to", value)
 	})
@@ -316,6 +379,7 @@ func (view *MainPageView) Init(window fyne.Window) {
 	view.ResStatusCode = canvas.NewText("", color.Black)
 	// response body
 	view.ResHeaderEntry = widget.NewEntry()
+	view.ResHeaderEntry.SetPlaceHolder("请求结果的响应头")
 	view.ResTypeChoice = widget.NewSelect([]string{"text", "image"}, func(s string) {
 		fmt.Println("切换类型:" + s)
 	})
@@ -328,6 +392,7 @@ func (view *MainPageView) Init(window fyne.Window) {
 		core.GetInstance().Toast("尚未实现")
 	})
 	view.ResBodyText = widget.NewMultiLineEntry()
+	view.ResBodyText.SetPlaceHolder("响应体")
 	view.ResBodyImage = canvas.NewImageFromResource(theme.FileImageIcon())
 	view.ResBodyImage.FillMode = canvas.ImageFillOriginal
 	// view.ResBodyImage.Hide()

@@ -59,8 +59,10 @@ func (controller *MainController) BindView(view *views.MainPageView) {
 				log.Println("discard invalid header ,because len is not 2")
 			}
 		}
+		client := http.Client{Timeout: time.Duration(controller.Model.Timeout) * time.Second}
 
-		response, err := http.DefaultClient.Do(req)
+		response, err := client.Do(req)
+
 		if err == nil {
 			body, _ := ioutil.ReadAll(response.Body)
 			// 根据content-type 相应类型决定
@@ -98,6 +100,9 @@ func (controller *MainController) BindView(view *views.MainPageView) {
 
 		} else {
 			log.Println("err=", err)
+
+			view.ResHeaderEntry.Text = err.Error()
+			view.ResHeaderEntry.Refresh()
 			// dialog.ShowError(err, myWindow)
 		}
 		view.Infinite.Stop()

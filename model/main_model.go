@@ -22,7 +22,7 @@ type MainModel struct {
 	Files []HttpFile
 	// TODO 当前文件是否改变
 	// 当前工作区
-	CurFilePath string
+	CurWorkPath string
 	Vars        map[string]string
 
 	CurPreviewImage image.Image
@@ -31,6 +31,9 @@ type MainModel struct {
 	VarFiles []HttpFile
 
 	ResBodyBytes []byte
+	// request config
+	// timeout second
+	Timeout int
 }
 
 // func (main MainModel) send() {

@@ -22,6 +22,8 @@ go run .
 [ ] after modify , before close , prompt if save the http file
 [ ] about page
 [ ] 添加保存快捷键
+[ ] 环境变量列表管理
+[ ] 更换日志框架
 ## Roadmap
 
 - Prototype version
