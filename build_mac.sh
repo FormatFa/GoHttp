@@ -1,0 +1,1 @@
+~/go/bin/fyne package -os darwin
