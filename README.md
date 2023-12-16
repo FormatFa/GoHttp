@@ -24,6 +24,8 @@ go run .
 [ ] 添加保存快捷键
 [ ] 环境变量列表管理
 [ ] 更换日志框架
+[ ] form上传文件处理
+[ ] i18n
 ## Roadmap
 
 - Prototype version

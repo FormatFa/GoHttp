@@ -29,9 +29,7 @@ type Application struct {
 // 	// check if error is "file not exists"
 // 	if os.IsNotExist(error) {
 // 		application.Cache = cache.New(cache.NoExpiration, 10*time.Minute)
-// 		fmt.Println("cache file not found")
 // 	} else {
-// 		fmt.Println("read cache file done.")
 // 		temp := make(map[string]cache.Item, 10)
 // 		raw, err := os.ReadFile(filename)
 // 		if err != nil {
@@ -53,7 +51,7 @@ func (application *Application) Init() {
 	// storage.GetInstance().InitFromFile()
 	application.Cache = cache.New(cache.NoExpiration, 10*time.Minute)
 	application.FyneApp = app.NewWithID("online.indigo6a.gohttp")
-	application.Window = application.FyneApp.NewWindow("Container")
+	application.Window = application.FyneApp.NewWindow("GoHttp")
 
 	// menu := fyne.NewMainMenu(fyne.NewMenu("读取变量文件"))
 	// application.Window.SetMainMenu(menu)

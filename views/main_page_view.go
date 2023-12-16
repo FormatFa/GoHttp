@@ -62,16 +62,13 @@ type MainPageView struct {
 
 // load variables file to memory
 func (view *MainPageView) loadVarsFile(path string) {
-	fmt.Println("加载环境文件:" + path)
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
-		fmt.Println("读取文件错误")
 		return
 	}
 	var result map[string]interface{}
 	json.Unmarshal(data, &result)
 	for key, value := range result {
-		fmt.Println("load vars:" + key + ":" + value.(string))
 		view.Model.Vars[key] = value.(string)
 	}
 	core.GetInstance().FyneApp.SendNotification(fyne.NewNotification("tip", "共加载:"+strconv.Itoa(len(result))+"个变量"))
@@ -80,33 +77,27 @@ func (view *MainPageView) loadVarsFile(path string) {
 
 // 打开扫描指定目录
 func (view *MainPageView) OpenDir(dirpath string) {
-	fmt.Println("1open :" + dirpath)
+	log.Println("opening dir:" + dirpath)
 	view.Model.Files = make([]model.HttpFile, 0)
 	view.Model.VarFiles = make([]model.HttpFile, 0)
 	dirs, _ := os.ReadDir(dirpath)
-	fmt.Printf("radd.%d\n", len(dirs))
 
-	fmt.Printf("files len:%d", len(dirs))
 	for _, file := range dirs {
 		if !file.Type().IsDir() && strings.HasSuffix(file.Name(), ".http") {
-			fmt.Println(file.Name())
 			item := &model.HttpFile{Name: file.Name(), Path: path.Join(dirpath, file.Name())}
 			view.Model.Files = append(view.Model.Files, *item)
 		}
 		if !file.Type().IsDir() && strings.HasSuffix(file.Name(), "_env.json") {
-			fmt.Println(file.Name())
 			item := &model.HttpFile{Name: file.Name(), Path: path.Join(dirpath, file.Name())}
 			view.Model.VarFiles = append(view.Model.VarFiles, *item)
 		}
 	}
 	if len(view.Model.Files) == 0 {
-		fmt.Println("没有找到文件")
 	} else {
 		// 保存上次打开目录
 		// storage.GetInstance().Cache.Set("last_dir", dirpath, -1)
 		// storage.GetInstance().SaveToFile()
 		core.GetInstance().FyneApp.Preferences().SetString("last_dir", dirpath)
-		fmt.Println("已保存目录到缓存")
 
 	}
 	view.FileList.Refresh()
@@ -117,13 +108,13 @@ func (view *MainPageView) OpenDir(dirpath string) {
 	view.VarsCombo.SetOptions(options)
 	core.GetInstance().FyneApp.SendNotification(fyne.NewNotification("tip", "已打开目录:"+dirpath+" 共"+strconv.Itoa(len(view.Model.Files))+"个http文件"))
 
-	view.InfoText.Text = dirpath
+	view.InfoText.Text = "当前工作目录:" + dirpath
 	view.InfoText.Refresh()
 	view.Model.CurWorkPath = dirpath
+	view.FileList.UnselectAll()
+	log.Println("open dir done,files len=" + strconv.Itoa(len(view.Model.Files)))
 }
 func (view *MainPageView) Init(window fyne.Window) {
-
-	fmt.Println("main page view init...")
 
 	// main menu
 	window.SetMainMenu(fyne.NewMainMenu(
@@ -168,7 +159,66 @@ Content-type: application/json; charset=UTF-8
 
 			}, window)
 			diag.Show()
-		})),
+		}),
+			fyne.NewMenuItem("刷新工作区", func() {
+				if len(view.Model.CurWorkPath) > 0 {
+					view.OpenDir(view.Model.CurWorkPath)
+
+				} else {
+					core.GetInstance().Toast("请先打开工作区")
+				}
+			}),
+			fyne.NewMenuItem("保存当前请求", func() {
+
+				text := view.Model.Https.ToString()
+				httpEntry := widget.NewEntry()
+				httpEntry.Text = text
+
+				if len(view.Model.CurEditPath) > 0 {
+					os.WriteFile(view.Model.CurEditPath, []byte(text), 0644)
+					core.GetInstance().Toast("保存到:" + view.Model.CurEditPath)
+				} else {
+					core.GetInstance().Toast("请先选择保存位置")
+					if len(view.Model.CurWorkPath) <= 0 {
+						core.GetInstance().Toast("请先打开一个目录作为工作区")
+						return
+					}
+					dialog.NewEntryDialog("tip", "文件名", func(s string) {
+						path := path.Join(view.Model.CurWorkPath, s+".http")
+						os.WriteFile(path, []byte(text), 0644)
+						view.Model.CurEditPath = path
+						core.GetInstance().Toast("保存成功:" + path)
+
+					}, window).Show()
+
+				}
+
+			}), fyne.NewMenuItem("另存当前请求", func() {
+				text := view.Model.Https.ToString()
+				httpEntry := widget.NewEntry()
+				httpEntry.Text = text
+
+				if len(view.Model.CurWorkPath) <= 0 {
+					core.GetInstance().Toast("请先打开一个目录作为工作区")
+					return
+				}
+				dialog.NewEntryDialog("tip", "文件名", func(s string) {
+					path := path.Join(view.Model.CurWorkPath, s+".http")
+					os.WriteFile(path, []byte(text), 0644)
+					core.GetInstance().Toast("保存成功:" + path)
+					view.OpenDir(view.Model.CurWorkPath)
+
+				}, window).Show()
+				// dialog.NewFileSave(func(uc fyne.URIWriteCloser, err error) {
+				// 	if err != nil {
+				// 		return
+				// 	}
+				// 	uc.Write([]byte(text))
+				// 	core.GetInstance().Toast("保存成功:" + uc.URI().Path())
+
+				// }, window).Show()
+
+			})),
 		fyne.NewMenu("请求", fyne.NewMenuItem("保存修改", func() {
 			view.SaveCurHttp()
 		})),
@@ -213,6 +263,9 @@ Content-type: application/json; charset=UTF-8
 			}, window).Show()
 
 		})),
+		fyne.NewMenu("帮助", fyne.NewMenuItem("关于", func() {
+			dialog.NewInformation("关于", "GoHttp\nVersion: 0.0.1 Built by indigo6a", window).Show()
+		})),
 	))
 
 	toolbar := widget.NewToolbar(
@@ -220,8 +273,7 @@ Content-type: application/json; charset=UTF-8
 		widget.NewToolbarAction(theme.SettingsIcon(), func() {
 			timeoutEntry := widget.NewEntry()
 			timeoutEntry.Text = strconv.Itoa(view.Model.Timeout)
-			dialog.NewForm("setting", "apply", "cancel", []*widget.FormItem{widget.NewFormItem("timeout", timeoutEntry)}, func(b bool) {
-				fmt.Println("设置超时时间:", timeoutEntry.Text)
+			dialog.NewForm("setting", "apply", "cancel", []*widget.FormItem{widget.NewFormItem("超时", timeoutEntry)}, func(b bool) {
 				i, err := strconv.Atoi(timeoutEntry.Text)
 				if err != nil {
 					core.GetInstance().Toast("格式错误")
@@ -239,7 +291,6 @@ Content-type: application/json; charset=UTF-8
 		// }),
 		widget.NewToolbarSeparator(),
 		// widget.NewToolbarAction(theme.InfoIcon(), func() {
-		// 	fmt.Println("加载变量")
 		// 	// core.GetInstance().Window.SetMainMenu()
 
 		// }),
@@ -291,7 +342,6 @@ Content-type: application/json; charset=UTF-8
 		}
 		if id == 0 {
 			dialog.NewEntryDialog("tip", "名字", func(s string) {
-				fmt.Println("name:" + s)
 				view.Model.Https = append(view.Model.Https, listener.Http{
 					Name:   s,
 					Method: "GET",
@@ -302,7 +352,6 @@ Content-type: application/json; charset=UTF-8
 		}
 
 		view.Model.CurHttpRef = &view.Model.Https[id-1]
-		fmt.Printf("on select:%d", id-1)
 		http := view.Model.Https[id-1]
 		view.UrlEntry.SetText(http.Url)
 
@@ -312,7 +361,6 @@ Content-type: application/json; charset=UTF-8
 		cacheKey := http.Method + " " + http.Url
 		data, found := core.GetInstance().Cache.Get(cacheKey)
 		if found {
-			fmt.Println("load cache response:")
 			view.Model.ResBodyBytes = data.([]byte)
 			view.ResStatusCode.Text = "当前显示为上次请求缓存"
 			view.ResStatusCode.Color = color.RGBA{R: 255, G: 255, B: 0, A: 255}
@@ -324,7 +372,6 @@ Content-type: application/json; charset=UTF-8
 
 	}
 	view.FileList.OnSelected = func(id widget.ListItemID) {
-		fmt.Printf("on select:%d", id)
 		view.loadFileData(view.Model.Files[id].Path)
 	}
 
@@ -335,7 +382,6 @@ Content-type: application/json; charset=UTF-8
 	varsTip := widget.NewLabel("选择变量文件:")
 	// 环境切换等
 	view.VarsCombo = widget.NewSelect([]string{}, func(s string) {
-		fmt.Println("切换变量:" + s)
 	})
 	loadvarsBtn := widget.NewButton("读取", func() {
 		// 查找打开的那个文件
@@ -349,11 +395,10 @@ Content-type: application/json; charset=UTF-8
 				return
 			}
 		}
-		fmt.Println("没找到变量文件:" + view.VarsCombo.Selected)
 	})
 
 	toolLayout := container.NewHBox(varsTip, view.VarsCombo, loadvarsBtn)
-	view.MethodCombo = widget.NewSelect([]string{"GET", "POST", "DELETE"}, func(value string) {
+	view.MethodCombo = widget.NewSelect([]string{"GET", "POST", "DELETE", "PUT"}, func(value string) {
 		log.Println("Select set to", value)
 	})
 
@@ -381,18 +426,28 @@ Content-type: application/json; charset=UTF-8
 	view.ResHeaderEntry = widget.NewEntry()
 	view.ResHeaderEntry.SetPlaceHolder("请求结果的响应头")
 	view.ResTypeChoice = widget.NewSelect([]string{"text", "image"}, func(s string) {
-		fmt.Println("切换类型:" + s)
 	})
 	view.ResTypeChoice.Selected = "text"
 	view.ResTypeChoice.OnChanged = func(s string) {
-		fmt.Println("select:"+s, "body len:"+strconv.Itoa(len(view.Model.ResBodyBytes)))
 		view.UpdateResponsePreview()
 	}
 	viewBtn := widget.NewButton("下载", func() {
-		core.GetInstance().Toast("尚未实现")
+		dialog.NewFileSave(func(uc fyne.URIWriteCloser, err error) {
+			if err != nil || uc == nil {
+				return
+			}
+			_, e := uc.Write(view.Model.ResBodyBytes)
+			if e != nil {
+				core.GetInstance().Toast(err.Error())
+			} else {
+				core.GetInstance().Toast("已保存到:" + uc.URI().Path())
+
+			}
+		}, window).Show()
 	})
 	view.ResBodyText = widget.NewMultiLineEntry()
 	view.ResBodyText.SetPlaceHolder("响应体")
+	view.ResBodyText.Wrapping = fyne.TextWrapBreak
 	view.ResBodyImage = canvas.NewImageFromResource(theme.FileImageIcon())
 	view.ResBodyImage.FillMode = canvas.ImageFillOriginal
 	// view.ResBodyImage.Hide()
@@ -408,8 +463,7 @@ Content-type: application/json; charset=UTF-8
 	center := container.NewVSplit(reqDiv, resDiv)
 
 	view.InfoText = widget.NewLabel("not open workspace")
-	view.Canvas = container.NewBorder(container.NewVBox(toolbar, toolLayout, urlLayout), view.InfoText, container.NewVSplit(view.HttpList, view.FileList), nil, center)
-	fmt.Println("set canvas done" + strconv.FormatBool(view.Canvas == nil))
+	view.Canvas = container.NewBorder(container.NewVBox(toolbar, toolLayout, urlLayout), view.InfoText, container.NewVSplit(container.NewBorder(widget.NewLabel("-请求列表-"), nil, nil, nil, view.HttpList), container.NewBorder(widget.NewLabel("-文件列表-"), nil, nil, nil, view.FileList)), nil, center)
 
 	view.UrlEntry.OnChanged = func(s string) {
 		view.Model.CurHttpRef.IsChange = true
@@ -454,10 +508,10 @@ func (view *MainPageView) loadFileData(path string) {
 	https := listener.ReadFromFile(path)
 	fmt.Printf("load result,len=%d\n", len(https))
 	view.Model.Https = https
+	view.Model.CurEditPath = path
 	view.HttpList.Refresh()
 }
 func (view *MainPageView) GetCanvas() fyne.CanvasObject {
-	fmt.Println("call get canvas" + strconv.FormatBool(view.Canvas == nil))
 	return view.Canvas
 }
 func (view *MainPageView) setController(controller *mvc.BaseController) {
@@ -472,6 +526,7 @@ func (view *MainPageView) SaveCurHttp() {
 	view.Model.CurHttpRef.Method = view.MethodCombo.Selected
 	view.Model.CurHttpRef.Url = view.UrlEntry.Text
 	view.Model.CurHttpRef.Body = view.BodyEntry.Text
+	view.Model.CurHttpRef.HeaderRaw = view.ReqHeaderEntry.Text
 	view.Model.CurHttpRef.IsChange = false
 	view.HttpList.Refresh()
 	// TODO header save
@@ -480,7 +535,7 @@ func (view *MainPageView) SaveCurHttp() {
 func (view *MainPageView) UpdateResponsePreview() {
 	s := view.ResTypeChoice.Selected
 	if s == "text" {
-		if len(view.Model.ResBodyBytes) < 1024 {
+		if len(view.Model.ResBodyBytes) < 6000 {
 			bodyStr := string(view.Model.ResBodyBytes)
 			log.Println("boody:", string(view.Model.ResBodyBytes))
 			// 设置最大显示长度
@@ -494,7 +549,7 @@ func (view *MainPageView) UpdateResponsePreview() {
 		if view.Model.CurPreviewImage == nil {
 			img, _, err := image.Decode(bytes.NewReader(view.Model.ResBodyBytes))
 			if err != nil {
-				core.GetInstance().Toast("image parse err" + err.Error())
+				core.GetInstance().Toast("解析成图片错误" + err.Error())
 				return
 			}
 			view.ResBodyImage = canvas.NewImageFromImage(img)
@@ -505,7 +560,6 @@ func (view *MainPageView) UpdateResponsePreview() {
 	}
 	view.ResBodyLayout.Refresh()
 	view.ResStatusCode.Refresh()
-	fmt.Println(view.ResBodyCur)
 }
 
 // 打开选择工作区

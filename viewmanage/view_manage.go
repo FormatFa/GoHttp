@@ -9,6 +9,7 @@ import (
 	"gohttp/model"
 	"gohttp/mvc"
 	"gohttp/views"
+	"log"
 )
 
 func openView(viewId string) {
@@ -16,7 +17,7 @@ func openView(viewId string) {
 	fmt.Printf("open view point:%p\n", &viewId)
 	// var view *mvc.BaseView = nil
 	if viewId == "main" {
-		OpenMainPageView()
+		OpenMainPageView("")
 	} else {
 		errors.New("unknow view id" + viewId)
 	}
@@ -28,7 +29,7 @@ func openView(viewId string) {
 
 }
 
-func OpenMainPageView() mvc.BaseView {
+func OpenMainPageView(path string) mvc.BaseView {
 	view := new(views.MainPageView)
 	mainModel := &model.MainModel{
 		Https:   make(listener.Https, 1),
@@ -49,6 +50,10 @@ func OpenMainPageView() mvc.BaseView {
 	canvas := view.GetCanvas()
 	core.GetInstance().Window.SetContent(canvas)
 	lastDir := core.GetInstance().FyneApp.Preferences().String("last_dir")
+	if len(path) > 0 {
+		log.Println("use input path instead of last dir:" + path)
+		lastDir = path
+	}
 	if len(lastDir) > 0 {
 		fmt.Printf("last dir:%s", lastDir)
 		view.OpenDir(lastDir)

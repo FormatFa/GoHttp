@@ -24,10 +24,8 @@ func TestParse(t *testing.T) {
 	p := parser.NewGoHttpParser(stream)
 	p.AddErrorListener(antlr.NewDiagnosticErrorListener(true))
 	tree := p.Https()
-	fmt.Println("fff")
 	listener := NewHttpBuilderListener()
 	antlr.ParseTreeWalkerDefault.Walk(listener, tree)
-	println("hello")
 	https := listener.GetHttps()
 	for _, val := range https {
 		fmt.Println(val.Method + " " + val.Url)

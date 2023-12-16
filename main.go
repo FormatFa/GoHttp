@@ -27,7 +27,7 @@ func init() {
 	//设置中文环境
 	fontPaths := findfont.List()
 	for _, path := range fontPaths {
-		// fmt.Println(path)
+
 		//楷体:simkai.ttf
 		//黑体:simhei.ttf
 		if strings.Contains(path, "simhei.ttf") {
@@ -73,7 +73,7 @@ func main4() {
 func main() {
 
 	core.GetInstance().Init()
-	viewmanage.OpenMainPageView()
+	viewmanage.OpenMainPageView("")
 	core.GetInstance().Start()
 
 }

@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"fmt"
 	"gohttp/core"
 	"gohttp/listener"
 	"gohttp/model"
@@ -32,12 +31,11 @@ func (controller *MainController) BindView(view *views.MainPageView) {
 	controller.View = view
 
 	view.SendBtn.OnTapped = func() {
-		fmt.Println("my click.")
+
 		method := view.MethodCombo.Selected
 		url := view.UrlEntry.Text
 		headerStr := view.ReqHeaderEntry.Text
 		bodyStr := view.BodyEntry.Text
-		fmt.Println("" + method + " " + url + " " + headerStr + " " + bodyStr)
 
 		view.Infinite.Show()
 		view.Infinite.Start()

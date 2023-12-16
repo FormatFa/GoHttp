@@ -3,7 +3,6 @@ package storage
 import (
 	"bytes"
 	"encoding/gob"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"time"
@@ -26,9 +25,7 @@ func (storage *Storage) InitFromFile() {
 	// check if error is "file not exists"
 	if os.IsNotExist(error) {
 		storage.Cache = cache.New(cache.NoExpiration, 10*time.Minute)
-		fmt.Println("cache file not found")
 	} else {
-		fmt.Println("read cache file done.")
 		temp := make(map[string]cache.Item, 10)
 		raw, err := os.ReadFile(storage.FileName)
 		if err != nil {

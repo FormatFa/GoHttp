@@ -1,9 +1,9 @@
 package listener
 
 import (
-	"fmt"
 	"gohttp/parser"
 	"io"
+	"strings"
 
 	"github.com/antlr4-go/antlr/v4"
 )
@@ -29,6 +29,24 @@ type HttpBuilderListener struct {
 	curHeader *Header
 }
 
+func (https Https) ToString() string {
+	result := ""
+	for _, http := range https {
+		result = result + "# " + http.Name + "\n" + http.Method + " " + http.Url
+		result += "\n"
+		result += strings.TrimSpace(http.HeaderRaw)
+		result += "\n"
+		result += "\n"
+		result += http.Body
+		// for _, head := range http.Headers {
+		// 	result += head.Key + ":" + head.Value
+		// 	result += "\n"
+		// }
+		result += "\n"
+		result += "\n"
+	}
+	return result
+}
 func ReadFromIo(reader io.Reader) Https {
 	input := antlr.NewIoStream(reader)
 	lexer := parser.NewGoHttpLexer(input)
@@ -39,12 +57,7 @@ func ReadFromIo(reader io.Reader) Https {
 	listener := NewHttpBuilderListener()
 	antlr.ParseTreeWalkerDefault.Walk(listener, tree)
 	https := listener.GetHttps()
-	fmt.Println("parse done")
-	for _, val := range https {
-		fmt.Println(val.Method + " " + val.Url)
-		fmt.Println(val.Headers)
-		fmt.Println(val.Body)
-	}
+
 	return https
 }
 func ReadFromFile(path string) Https {
@@ -57,19 +70,14 @@ func ReadFromFile(path string) Https {
 	listener := NewHttpBuilderListener()
 	antlr.ParseTreeWalkerDefault.Walk(listener, tree)
 	https := listener.GetHttps()
-	for _, val := range https {
-		fmt.Println(val.Method + " " + val.Url)
-		fmt.Println(val.Headers)
-		fmt.Println(val.Body)
-	}
+
 	return https
 }
 func (listener *HttpBuilderListener) EnterHttps(ctx *parser.HttpsContext) {
-	fmt.Println("enter https:")
 	listener.https = make(Https, 0)
 }
 func (s *HttpBuilderListener) EnterComment(ctx *parser.CommentContext) {
-	s.curHttp.Name = ctx.GetText()
+	s.curHttp.Name = strings.TrimSpace(ctx.GetText())
 }
 
 func (s *HttpBuilderListener) EnterHttp(ctx *parser.HttpContext) {
@@ -85,11 +93,9 @@ func (s *HttpBuilderListener) EnterMethod(ctx *parser.MethodContext) {
 }
 
 func (s *HttpBuilderListener) EnterUrl(ctx *parser.UrlContext) {
-	fmt.Println("url:" + ctx.GetText())
 	s.curHttp.Url = ctx.GetText()
 }
 func (s *HttpBuilderListener) EnterHeader_field(ctx *parser.Header_fieldContext) {
-	fmt.Println("field:" + ctx.GetText())
 	s.curHttp.HeaderRaw += ctx.GetText() + "\n"
 }
 

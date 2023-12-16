@@ -23,6 +23,8 @@ type MainModel struct {
 	// TODO 当前文件是否改变
 	// 当前工作区
 	CurWorkPath string
+	// 当前编辑的文件
+	CurEditPath string
 	Vars        map[string]string
 
 	CurPreviewImage image.Image
