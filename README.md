@@ -7,6 +7,10 @@ Http请求工具.
 - 请求保存为.http文本文件
 - 读取.http文本文件来请求
 
+## Screenshot
+![main1](doc/screenshot/main1.jpg)
+![main1](doc/screenshot/main2.jpg)
+
 ## Getting Start
 
 go run .
