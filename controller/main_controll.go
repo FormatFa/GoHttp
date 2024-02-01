@@ -5,6 +5,7 @@ import (
 	"gohttp/listener"
 	"gohttp/model"
 	"gohttp/mvc"
+	"gohttp/util"
 	"gohttp/views"
 	"image/color"
 	"io/ioutil"
@@ -82,7 +83,7 @@ func (controller *MainController) BindView(view *views.MainPageView) {
 			log.Println(resHeadStr)
 			// TODO muliti values?
 			view.ResHeaderEntry.SetText(resHeadStr)
-			view.ResStatusCode.Text = response.Status
+			view.ResStatusCode.Text = response.Status + " Content Length:" + util.FormatSize((int)(response.ContentLength))
 			if response.StatusCode >= 200 && response.StatusCode < 300 {
 				view.ResStatusCode.Color = color.RGBA{R: 0, G: 255, B: 0, A: 255}
 

@@ -541,7 +541,7 @@ func (view *MainPageView) UpdateResponsePreview() {
 			// 设置最大显示长度
 			view.ResBodyText.SetText(bodyStr)
 		} else {
-			view.ResBodyText.SetText("gohttp: 文本太长不显示")
+			view.ResBodyText.SetText("gohttp: 文本太只显示部分:\n" + string(view.Model.ResBodyBytes[:1000]) + "\n省略...")
 		}
 		view.ResBodyLayout.Content = view.ResBodyText
 	} else if s == "image" {
